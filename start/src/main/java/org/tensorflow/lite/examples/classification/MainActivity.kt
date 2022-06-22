@@ -20,6 +20,7 @@ import android.Manifest
 import android.annotation.SuppressLint
 import android.content.Context
 import android.content.pm.PackageManager
+import android.content.res.AssetManager
 import android.graphics.Bitmap
 import android.graphics.Matrix
 import android.os.Bundle
@@ -28,23 +29,30 @@ import android.util.Size
 import android.widget.Toast
 import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
-import androidx.camera.core.Camera
-import androidx.camera.core.CameraSelector
-import androidx.camera.core.ImageAnalysis
-import androidx.camera.core.ImageProxy
-import androidx.camera.core.Preview
+import androidx.camera.core.*
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.view.PreviewView
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.Observer
 import androidx.recyclerview.widget.RecyclerView
+import org.tensorflow.lite.DataType
+import org.tensorflow.lite.examples.classification.ml.ConvertedModel
 import org.tensorflow.lite.examples.classification.ui.RecognitionAdapter
 import org.tensorflow.lite.examples.classification.util.YuvToRgbConverter
 import org.tensorflow.lite.examples.classification.viewmodel.Recognition
 import org.tensorflow.lite.examples.classification.viewmodel.RecognitionListViewModel
+import org.tensorflow.lite.support.common.FileUtil
+import org.tensorflow.lite.support.common.ops.NormalizeOp
+import org.tensorflow.lite.support.image.ImageProcessor
+import org.tensorflow.lite.support.image.TensorImage
+import org.tensorflow.lite.support.image.ops.ResizeOp
+import org.tensorflow.lite.support.label.TensorLabel
+import java.io.File
+import java.io.IOException
+import java.io.InputStream
 import java.util.concurrent.Executors
-import kotlin.random.Random
+
 
 // Constants
 private const val MAX_RESULT_DISPLAY = 3 // Maximum number of results displayed
@@ -207,8 +215,7 @@ class MainActivity : AppCompatActivity() {
         ImageAnalysis.Analyzer {
 
         // TODO 1: Add class variable TensorFlow Lite Model
-        // Initializing the flowerModel by lazy so that it runs in the same thread when the process
-        // method is called.
+        private val model = ConvertedModel.newInstance(ctx)
 
         // TODO 6. Optional GPU acceleration
 
@@ -219,16 +226,37 @@ class MainActivity : AppCompatActivity() {
 
             // TODO 2: Convert Image to Bitmap then to TensorImage
 
+            //Image processor ( resize + normalize )
+            val imageProcessor: ImageProcessor = ImageProcessor.Builder()
+                .add(ResizeOp(224, 224, ResizeOp.ResizeMethod.BILINEAR))
+                .add(NormalizeOp(0f,255f))
+                .build()
+            var tfImage = TensorImage(DataType.FLOAT32)
+            tfImage.load(toBitmap(imageProxy))
+            tfImage = imageProcessor.process(tfImage)
+            // Change to TensorBuffer for model prediction
+            var inputFeature0 = tfImage.tensorBuffer
             // TODO 3: Process the image using the trained model, sort and pick out the top results
 
+            // Labels list
+            var associatedAxisLabels = mutableListOf<String>()
+            associatedAxisLabels.add("Cat")
+            associatedAxisLabels.add("Dog")
+            associatedAxisLabels.add("Human")
+
+            var floatMap: Map<String, Float>?
+            // Map of labels and their corresponding probability
+            val labels = TensorLabel(associatedAxisLabels, model.process(inputFeature0).outputFeature0AsTensorBuffer);
+            // Create a map to access the result based on label
+            floatMap = labels.mapWithFloatValue;
             // TODO 4: Converting the top probability items into a list of recognitions
-
-            // START - Placeholder code at the start of the codelab. Comment this block of code out.
-            for (i in 0 until MAX_RESULT_DISPLAY){
-                items.add(Recognition("Fake label $i", Random.nextFloat()))
+            // Sort descending
+            floatMap = floatMap.toList().sortedByDescending { (_, value) -> value }.toMap()
+            for (label in floatMap){
+                items.add((Recognition(label.key,label.value)))
             }
-            // END - Placeholder code at the start of the codelab. Comment this block of code out.
 
+            //print(outputs.floatArray)
             // Return the result
             listener(items.toList())
 

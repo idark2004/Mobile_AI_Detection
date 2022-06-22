@@ -15,4 +15,4 @@
  */
 
 include ':finish', ':start'
-rootProject.name = "TFL Classify"
+rootProject.name = "AI Detection"

@@ -20,7 +20,6 @@ import android.Manifest
 import android.annotation.SuppressLint
 import android.content.Context
 import android.content.pm.PackageManager
-import android.content.res.AssetManager
 import android.graphics.Bitmap
 import android.graphics.Matrix
 import android.os.Bundle
@@ -42,15 +41,11 @@ import org.tensorflow.lite.examples.classification.ui.RecognitionAdapter
 import org.tensorflow.lite.examples.classification.util.YuvToRgbConverter
 import org.tensorflow.lite.examples.classification.viewmodel.Recognition
 import org.tensorflow.lite.examples.classification.viewmodel.RecognitionListViewModel
-import org.tensorflow.lite.support.common.FileUtil
 import org.tensorflow.lite.support.common.ops.NormalizeOp
 import org.tensorflow.lite.support.image.ImageProcessor
 import org.tensorflow.lite.support.image.TensorImage
 import org.tensorflow.lite.support.image.ops.ResizeOp
 import org.tensorflow.lite.support.label.TensorLabel
-import java.io.File
-import java.io.IOException
-import java.io.InputStream
 import java.util.concurrent.Executors
 
 
@@ -235,7 +230,7 @@ class MainActivity : AppCompatActivity() {
             tfImage.load(toBitmap(imageProxy))
             tfImage = imageProcessor.process(tfImage)
             // Change to TensorBuffer for model prediction
-            var inputFeature0 = tfImage.tensorBuffer
+            val inputFeature0 = tfImage.tensorBuffer
             // TODO 3: Process the image using the trained model, sort and pick out the top results
 
             // Labels list
@@ -246,9 +241,9 @@ class MainActivity : AppCompatActivity() {
 
             var floatMap: Map<String, Float>?
             // Map of labels and their corresponding probability
-            val labels = TensorLabel(associatedAxisLabels, model.process(inputFeature0).outputFeature0AsTensorBuffer);
+            val labels = TensorLabel(associatedAxisLabels, model.process(inputFeature0).outputFeature0AsTensorBuffer)
             // Create a map to access the result based on label
-            floatMap = labels.mapWithFloatValue;
+            floatMap = labels.mapWithFloatValue
             // TODO 4: Converting the top probability items into a list of recognitions
             // Sort descending
             floatMap = floatMap.toList().sortedByDescending { (_, value) -> value }.toMap()
